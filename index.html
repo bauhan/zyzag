@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Raket</title>
+<meta name="description" content="Tek skor, iki taraf. Sayı kimin renginde yazıyorsa o önde. Tarayıcıda oynanan sade bir raket oyunu.">
+<style>
+  @font-face { font-family: "Barlow"; font-weight: 300; src: url("yazi/Barlow-Light.ttf") format("truetype"); font-display: swap; }
+  @font-face { font-family: "Barlow"; font-weight: 400; src: url("yazi/Barlow-Regular.ttf") format("truetype"); font-display: swap; }
+  @font-face { font-family: "Barlow"; font-weight: 600; src: url("yazi/Barlow-SemiBold.ttf") format("truetype"); font-display: swap; }
+
+  :root {
+    --zemin: #33302e;          /* sayfa: oyunun kenar renginin koyusu */
+    --saha-ust: #8b867e;       /* oyun sahasıyla aynı tonlar */
+    --saha-alt: #74706a;
+    --yazi: #f4f1ec;
+    --soluk: rgba(244, 241, 236, 0.62);
+    --cok-soluk: rgba(244, 241, 236, 0.38);
+    --cizgi: rgba(255, 255, 255, 0.12);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--zemin);
+    background-image: radial-gradient(ellipse at 50% 0%, #45413d 0%, var(--zemin) 60%);
+    color: var(--yazi);
+    font-family: "Barlow", system-ui, sans-serif;
+    font-weight: 400;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .sayfa {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 40px 24px 32px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 56px;
+    align-items: start;
+  }
+
+  /* Oyun çerçevesi: oyunla aynı 9:16 oran, kenarda boşluk kalmaz */
+  /* Sayfa kaydırılınca oyun yerinde kalır */
+  .oyun {
+    position: sticky;
+    top: max(20px, 5vh);
+    height: min(90vh, 900px);
+    aspect-ratio: 9 / 16;
+    border-radius: 22px;
+    overflow: hidden;
+    background: linear-gradient(var(--saha-ust), var(--saha-alt));
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--cizgi);
+  }
+  .oyun iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+
+  /* Oyna katmanı: tıklayınca oyun yüklenir ve klavye odağı oyuna geçer */
+  .oyna {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+    background: linear-gradient(var(--saha-ust), var(--saha-alt));
+    border: 0; cursor: pointer; color: var(--yazi); font: inherit;
+  }
+  .oyna .daire {
+    width: 92px; height: 92px; border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    display: grid; place-items: center;
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  .oyna .daire::after {
+    content: ""; margin-left: 6px;
+    border-left: 22px solid var(--yazi); border-top: 14px solid transparent; border-bottom: 14px solid transparent;
+  }
+  .oyna:hover .daire { transform: scale(1.06); background: rgba(255, 255, 255, 0.08); }
+  .oyna span { font-weight: 600; letter-spacing: 0.18em; font-size: 15px; }
+  .oyna small { color: var(--soluk); font-size: 14px; letter-spacing: 0.04em; }
+
+  .bilgi { max-width: 440px; min-width: 0; padding-top: max(20px, 5vh); }
+  h1 {
+    font-weight: 300; font-size: clamp(56px, 8vw, 96px); letter-spacing: 0.08em;
+    margin: 0; line-height: 1;
+  }
+  .alt-cizgi { width: 56px; height: 3px; background: rgba(255, 255, 255, 0.5); margin: 22px 0 22px; }
+  .slogan { font-size: 22px; font-weight: 300; line-height: 1.45; margin: 0 0 40px; color: var(--yazi); }
+
+  h2 {
+    font-size: 13px; font-weight: 600; letter-spacing: 0.2em; color: var(--cok-soluk);
+    margin: 0 0 14px; text-transform: uppercase;
+  }
+  .kurallar { list-style: none; padding: 0; margin: 0 0 36px; }
+  .kurallar li { padding: 12px 0; border-top: 1px solid var(--cizgi); line-height: 1.45; }
+  .kurallar li:last-child { border-bottom: 1px solid var(--cizgi); }
+  .kurallar b { font-weight: 600; display: block; margin-bottom: 2px; }
+  .kurallar span { color: var(--soluk); }
+
+  .tuslar { display: grid; grid-template-columns: auto 1fr; gap: 10px 18px; align-items: center; margin: 0 0 36px; }
+  .tuslar dd { margin: 0; color: var(--soluk); }
+  .tuslar dt { white-space: nowrap; }
+  kbd {
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    display: inline-block; min-width: 28px; padding: 4px 8px; margin-right: 4px; text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 6px; color: var(--yazi);
+  }
+
+  .seviyeler { color: var(--soluk); margin: 0 0 36px; line-height: 1.5; }
+
+  footer { font-size: 13px; color: var(--cok-soluk); letter-spacing: 0.02em; }
+  footer a { color: inherit; }
+
+  .uyari { display: none; }
+
+  /* Dar ekran: alt alta */
+  @media (max-width: 860px) {
+    .sayfa { grid-template-columns: 1fr; gap: 36px; padding: 28px 16px; justify-items: center; }
+    .oyun { position: relative; top: 0; height: auto; width: min(100%, 420px); }
+    .bilgi { max-width: 520px; width: 100%; }
+    .uyari { display: block; color: var(--soluk); font-size: 15px; margin: -16px 0 32px; }
+  }
+</style>
+</head>
+<body>
+  <main class="sayfa">
+    <div class="oyun" id="oyun">
+      <button class="oyna" id="oyna" aria-label="Oyunu başlat">
+        <div class="daire"></div>
+        <span>OYNA</span>
+        <small>Klavyeyle oynanır</small>
+      </button>
+    </div>
+
+    <section class="bilgi">
+      <h1>RAKET</h1>
+      <div class="alt-cizgi"></div>
+      <p class="slogan">Tek skor, iki taraf.<br>Sayı kimin renginde yazıyorsa o önde.</p>
+      <p class="uyari">Bu oyun klavyeyle oynanır; bilgisayardan aç.</p>
+
+      <h2>Nasıl oynanır</h2>
+      <ul class="kurallar">
+        <li><b>Ortak skor</b><span>Ekranda tek bir sayı var. Beyaz yazıyorsa beyaz, siyah yazıyorsa siyah o kadar önde. 3 fark atan kazanır.</span></li>
+        <li><b>Kesme</b><span>Topa vururken yana git, top da o yöne kaçsın.</span></li>
+        <li><b>İtme</b><span>Boşluğa tam zamanında bas, top hızlansın.</span></li>
+        <li><b>Ortadan vur</b><span>Raketin ortasındaki şeritle vurursan top daha sert gider.</span></li>
+        <li><b>Kenarlar açık</b><span>Raketin sağdan çıkar, soldan girer.</span></li>
+      </ul>
+
+      <h2>Kontroller</h2>
+      <dl class="tuslar">
+        <dt><kbd>A</kbd><kbd>D</kbd></dt><dd>Hareket (oklar da olur)</dd>
+        <dt><kbd>Boşluk</kbd></dt><dd>İtme</dd>
+        <dt><kbd>Esc</kbd></dt><dd>Duraklat</dd>
+      </dl>
+
+      <h2>Rakibin</h2>
+      <p class="seviyeler">Kolay, Orta, Zor ya da Kusursuz bir bot. Menüden seç.</p>
+
+      <footer>Godot ile yapıldı · Yazı tipi: <a href="yazi/OFL.txt">Barlow (SIL OFL)</a></footer>
+    </section>
+  </main>
+
+<script>
+  // Oyun ilk tıklamada yüklenir (40 MB'lık motor sayfa açılır açılmaz inmesin),
+  // ve klavye odağı oyuna geçer.
+  const kutu = document.getElementById("oyun");
+  const oyna = document.getElementById("oyna");
+  oyna.addEventListener("click", () => {
+    const f = document.createElement("iframe");
+    f.src = "oyun/index.html";
+    f.title = "Raket";
+    f.allow = "autoplay; fullscreen";
+    kutu.appendChild(f);
+    oyna.remove();
+    f.addEventListener("load", () => f.focus());
+    f.focus();
+  });
+  // Oyun alanına tıklanınca odak hep oyunda kalsın
+  kutu.addEventListener("pointerdown", () => {
+    const f = kutu.querySelector("iframe");
+    if (f) f.focus();
+  });
+</script>
+</body>
+</html>
