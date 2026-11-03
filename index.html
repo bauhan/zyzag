@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Raket</title>
+<title>Zyzag</title>
 <meta name="description" content="Tek skor, iki taraf. Sayı kimin renginde yazıyorsa o önde. Tarayıcıda oynanan sade bir raket oyunu.">
 <style>
   @font-face { font-family: "Barlow"; font-weight: 300; src: url("yazi/Barlow-Light.ttf") format("truetype"); font-display: swap; }
@@ -131,7 +131,7 @@
     </div>
 
     <section class="bilgi">
-      <h1>RAKET</h1>
+      <h1>ZYZAG</h1>
       <div class="alt-cizgi"></div>
       <p class="slogan">Tek skor, iki taraf.<br>Sayı kimin renginde yazıyorsa o önde.</p>
       <p class="uyari">Bu oyun klavyeyle oynanır; bilgisayardan aç.</p>
@@ -167,7 +167,7 @@
   oyna.addEventListener("click", () => {
     const f = document.createElement("iframe");
     f.src = "oyun/index.html";
-    f.title = "Raket";
+    f.title = "Zyzag";
     f.allow = "autoplay; fullscreen";
     kutu.appendChild(f);
     oyna.remove();
