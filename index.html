@@ -172,17 +172,25 @@
     kutu.appendChild(f);
     oyna.remove();
     f.focus();
-    // Oyun motoru yüklenirken odağı birkaç saniye boyunca tekrar ver;
+    // Oyun motoru yüklenene kadar odağı tekrar tekrar ver (yavaş bağlantıda da);
     // böylece klavye, oyunun içine tıklamaya gerek kalmadan çalışır.
+    // Oyuncu bu arada sayfada başka bir yere tıklarsa odağı zorla geri almayız.
     let tries = 0;
+    let readySince = 0;
     const timer = setInterval(() => {
       tries += 1;
       try {
-        f.contentWindow.focus();
-        const canvas = f.contentDocument && f.contentDocument.querySelector("canvas");
-        if (canvas) canvas.focus();
+        const doc = f.contentDocument;
+        const canvas = doc && doc.querySelector("canvas");
+        const loading = doc && doc.getElementById("status") && getComputedStyle(doc.getElementById("status")).visibility !== "hidden";
+        if (document.activeElement === f || document.activeElement === document.body) {
+          f.contentWindow.focus();
+          if (canvas) canvas.focus();
+        }
+        if (canvas && !loading) readySince += 1;
       } catch (e) { /* aynı sitede olduğu için normalde hata vermez */ }
-      if (tries > 40) clearInterval(timer);
+      // Oyun hazır olduktan sonra 2 saniye daha dene, en fazla 1 dakika
+      if (readySince > 8 || tries > 240) clearInterval(timer);
     }, 250);
   });
   // Oyun alanına tıklanınca odak hep oyunda kalsın
