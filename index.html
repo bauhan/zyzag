@@ -238,7 +238,7 @@
       this.peer = new Peer({ debug: 0 });
       this.peer.on("open", () => {
         this.status = "connecting";
-        this._wire(this.peer.connect("zyzag-" + code, { reliable: true, serialization: "raw" }));
+        this._wire(this.peer.connect("zyzag-" + code, { reliable: false, serialization: "raw" }));
       });
       this.peer.on("error", (e) => { if (this.status !== "connected") this.status = "error:" + e.type; });
     },
