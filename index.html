@@ -111,6 +111,23 @@
 
   .uyari { display: none; }
 
+  .oda {
+    margin: 0 0 36px; padding: 18px 20px; border-radius: 14px;
+    background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.25);
+    line-height: 1.45; color: var(--soluk);
+  }
+  .oda[hidden] { display: none; }
+  .oda b { color: var(--yazi); font-weight: 600; }
+  .oda-satir { display: flex; gap: 8px; margin-top: 12px; }
+  .oda input {
+    flex: 1; min-width: 0; font: inherit; font-size: 15px; color: var(--yazi);
+    background: rgba(0, 0, 0, 0.25); border: 1px solid var(--cizgi); border-radius: 8px; padding: 8px 10px;
+  }
+  .oda button {
+    font: inherit; font-weight: 600; font-size: 14px; letter-spacing: 0.06em; cursor: pointer;
+    color: var(--zemin); background: var(--yazi); border: 0; border-radius: 8px; padding: 8px 14px;
+  }
+
   /* Dar ekran: alt alta */
   @media (max-width: 860px) {
     .sayfa { grid-template-columns: 1fr; gap: 36px; padding: 28px 16px; justify-items: center; }
@@ -136,6 +153,11 @@
       <p class="slogan">Tek skor, iki taraf.<br>Sayı kimin renginde yazıyorsa o önde.</p>
       <p class="uyari">Bu oyun klavyeyle oynanır; bilgisayardan aç.</p>
 
+      <div class="oda" id="oda" hidden>
+        <b>Oda hazır.</b> Bu bağlantıyı arkadaşına gönder; açıp OYNA'ya basınca maç başlar.
+        <div class="oda-satir"><input readonly aria-label="Oda bağlantısı"><button id="oda-kopyala">Kopyala</button></div>
+      </div>
+
       <h2>Nasıl oynanır</h2>
       <ul class="kurallar">
         <li><b>Ortak skor</b><span>Ekranda tek bir sayı var. Beyaz yazıyorsa beyaz, siyah yazıyorsa siyah o kadar önde. 3 fark atan kazanır.</span></li>
@@ -155,12 +177,94 @@
       </dl>
 
       <h2>Rakibin</h2>
-      <p class="seviyeler">Kolay, Orta, Zor ya da Kusursuz bir bot. Menüden seç.</p>
+      <p class="seviyeler">Kolay, Orta, Zor ya da Kusursuz bir bot. Ya da bir arkadaşın: menüde rakibi <b>Arkadaş</b> yap, odayı kur, çıkan bağlantıyı gönder. İkiniz de kendinizi altta görürsünüz.</p>
 
       <footer>Godot ile yapıldı · Yazı tipi: <a href="yazi/OFL.txt">Barlow (SIL OFL)</a></footer>
     </section>
   </main>
 
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+  // Arkadaşla internetten oynama. PeerJS'in ücretsiz sunucusu iki tarayıcıyı tanıştırır,
+  // sonra oyun verisi doğrudan aralarında akar. Oyun (iframe içindeki Godot) bu nesneyi
+  // window.parent.zyzagNet ile kullanır: host(), join(kod), send(yazı), take(), leave().
+  const odaKutusu = () => document.getElementById("oda");
+  const zyzagNet = {
+    status: "idle",       // idle, opening, waiting, connecting, connected, closed, error:<tür>
+    code: "",
+    room: (new URLSearchParams(location.search).get("oda") || "").toUpperCase(),
+    peer: null, conn: null, inbox: [],
+
+    _newCode() {
+      const harf = "ABCDEFGHJKMNPRSTUVYZ";
+      let c = "";
+      for (let i = 0; i < 4; i++) c += harf[Math.floor(Math.random() * harf.length)];
+      return c;
+    },
+    _wire(conn) {
+      this.conn = conn;
+      conn.on("open", () => { this.status = "connected"; this.inbox.push('{"t":"hello"}'); this._showLink(false); });
+      conn.on("data", (d) => this.inbox.push(d));
+      conn.on("close", () => { this.status = "closed"; });
+      conn.on("error", () => { this.status = "closed"; });
+    },
+    _showLink(on) {
+      const k = odaKutusu();
+      if (!k) return;
+      k.hidden = !on;
+      if (on) k.querySelector("input").value = location.origin + location.pathname + "?oda=" + this.code;
+    },
+    host() {
+      this.leave();
+      this.status = "opening";
+      this.code = this._newCode();
+      this.peer = new Peer("zyzag-" + this.code, { debug: 0 });
+      this.peer.on("open", () => { this.status = "waiting"; this._showLink(true); });
+      this.peer.on("connection", (c) => {
+        if (this.conn) { c.close(); return; }   // oda dolu
+        this._wire(c);
+      });
+      this.peer.on("error", (e) => {
+        if (e.type === "unavailable-id") { this.host(); return; }   // kod alınmış, yenisini dene
+        if (this.status !== "connected") this.status = "error:" + e.type;
+      });
+      this.peer.on("disconnected", () => { if (this.status === "waiting") this.peer.reconnect(); });
+    },
+    join(code) {
+      this.leave();
+      this.status = "opening";
+      this.code = code;
+      this.peer = new Peer({ debug: 0 });
+      this.peer.on("open", () => {
+        this.status = "connecting";
+        this._wire(this.peer.connect("zyzag-" + code, { reliable: true, serialization: "raw" }));
+      });
+      this.peer.on("error", (e) => { if (this.status !== "connected") this.status = "error:" + e.type; });
+    },
+    send(s) { if (this.conn && this.conn.open) this.conn.send(s); },
+    take() { const a = this.inbox; this.inbox = []; return JSON.stringify(a); },
+    leave() {
+      try { if (this.conn) this.conn.close(); } catch (e) {}
+      try { if (this.peer) this.peer.destroy(); } catch (e) {}
+      this.conn = null; this.peer = null; this.inbox = [];
+      this.status = "idle";
+      this._showLink(false);
+    },
+  };
+  window.zyzagNet = zyzagNet;
+  window.addEventListener("beforeunload", () => zyzagNet.leave());
+
+  if (zyzagNet.room) {
+    document.querySelector(".oyna small").textContent = "Arkadaşının odasına katıl: " + zyzagNet.room;
+  }
+  document.getElementById("oda-kopyala").addEventListener("click", async () => {
+    const inp = document.querySelector("#oda input");
+    try { await navigator.clipboard.writeText(inp.value); } catch (e) { inp.select(); document.execCommand("copy"); }
+    const b = document.getElementById("oda-kopyala");
+    b.textContent = "Kopyalandı";
+    setTimeout(() => (b.textContent = "Kopyala"), 1500);
+  });
+</script>
 <script>
   // Oyun ilk tıklamada yüklenir (40 MB'lık motor sayfa açılır açılmaz inmesin),
   // ve klavye odağı oyuna geçer.
