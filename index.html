@@ -143,7 +143,7 @@
       <button class="oyna" id="oyna" aria-label="Oyunu başlat">
         <div class="daire"></div>
         <span>OYNA</span>
-        <small>Klavyeyle oynanır</small>
+        <small>Fareyle oynanır</small>
       </button>
     </div>
 
@@ -151,7 +151,7 @@
       <h1>ZYZAG</h1>
       <div class="alt-cizgi"></div>
       <p class="slogan">Tek skor, iki taraf.<br>Sayı kimin renginde yazıyorsa o önde.</p>
-      <p class="uyari">Bu oyun klavyeyle oynanır; bilgisayardan aç.</p>
+      <p class="uyari">Bu oyun fareyle ya da klavyeyle oynanır; bilgisayardan aç.</p>
 
       <div class="oda" id="oda" hidden>
         <b>Oda hazır.</b> Bu bağlantıyı arkadaşına gönder; açıp OYNA'ya basınca maç başlar.
@@ -162,18 +162,19 @@
       <ul class="kurallar">
         <li><b>Ortak skor</b><span>Ekranda tek bir sayı var. Beyaz yazıyorsa beyaz, siyah yazıyorsa siyah o kadar önde. 3 fark atan kazanır.</span></li>
         <li><b>Kesme</b><span>Topa vururken yana git, top da o yöne kaçsın.</span></li>
-        <li><b>İtme</b><span>Boşluğa tam zamanında bas, top hızlansın.</span></li>
+        <li><b>İtme</b><span>Tam zamanında tıkla, top hızlansın.</span></li>
         <li><b>Ortadan vur</b><span>Raketin ortasındaki şeritle vurursan top daha sert gider.</span></li>
         <li><b>Kenarlar açık</b><span>Raketin sağdan çıkar, soldan girer.</span></li>
         <li><b>Çekim modu</b><span>Ortadaki çember topu bir itiyor, bir çekiyor. Etrafındaki halka değişime kalan süreyi gösterir.</span></li>
-        <li><b>Dümen modu</b><span>Top senin rengindeyse onu sen yönetirsin: A ve D raketi değil topu büker, raketin yerinde bekler. Top rakibin rengine dönünce yönetme sırası ondadır.</span></li>
+        <li><b>Dümen modu</b><span>Top senin rengindeyse onu sen yönetirsin: fareyi sağa sola kaydırmak raketi değil topu büker, raketin yerinde bekler. Top rakibin rengine dönünce yönetme sırası ondadır.</span></li>
       </ul>
 
       <h2>Kontroller</h2>
       <dl class="tuslar">
-        <dt><kbd>A</kbd><kbd>D</kbd></dt><dd>Hareket (oklar da olur)</dd>
-        <dt><kbd>Boşluk</kbd></dt><dd>İtme</dd>
-        <dt><kbd>Esc</kbd></dt><dd>Duraklat</dd>
+        <dt><kbd>Fare</kbd></dt><dd>Hareket. Oyuna tıklayınca fare oyuna kilitlenir.</dd>
+        <dt><kbd>Sol tık</kbd></dt><dd>İtme</dd>
+        <dt><kbd>Esc</kbd></dt><dd>Duraklat, fareyi bırak</dd>
+        <dt><kbd>A</kbd><kbd>D</kbd> <kbd>Boşluk</kbd></dt><dd>İstersen klavyeyle de oynanır</dd>
       </dl>
 
       <h2>Rakibin</h2>
@@ -277,6 +278,19 @@
     f.allow = "autoplay; fullscreen";
     kutu.appendChild(f);
     oyna.remove();
+    // Fare kilidi: tarayıcı kilidi sadece tıklama anında verir. Oyun "bir sonraki tık maça
+    // götürecek" dediğinde (zyzagWantLock) kilidi tıklamanın içinde biz isteriz.
+    f.addEventListener("load", () => {
+      const d = f.contentDocument;
+      d.addEventListener("mousedown", () => {
+        if (f.contentWindow.zyzagWantLock && !d.pointerLockElement) {
+          const c = d.querySelector("canvas");
+          if (c && c.requestPointerLock) {
+            try { const p = c.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+          }
+        }
+      }, true);
+    });
     f.focus();
     // Oyun motoru yüklenene kadar odağı tekrar tekrar ver (yavaş bağlantıda da);
     // böylece klavye, oyunun içine tıklamaya gerek kalmadan çalışır.
